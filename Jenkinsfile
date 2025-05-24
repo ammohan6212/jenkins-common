@@ -2,9 +2,9 @@
 
 pipeline {
     agent any
-     parameters([
+     parameters(
         string(name: 'GITHUB_REPO', defaultValue: '', description: 'GitHub repository URL')
-    ])
+    )
     
 
     stages {
