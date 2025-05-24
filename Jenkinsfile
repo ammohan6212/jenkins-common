@@ -1,4 +1,4 @@
-@Library('microservice@master') _ 
+@Library('microservice@main') _ 
 
 pipeline {
     agent any
