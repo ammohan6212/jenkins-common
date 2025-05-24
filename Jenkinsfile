@@ -158,7 +158,7 @@ pipeline {
                 }
                 stage("Perform Docker Image Build") {
                     steps {
-                        buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", ${env.version}, '.')
+                        buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
                     }
                 }
                 stage("Docker Image Validation") {
