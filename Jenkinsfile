@@ -1016,8 +1016,8 @@ pipeline {
                     steps {
                         script {
                             sh """"""
+                        }
                     }
-                }
                 }
                 stage("monitoring the prod environment"){
                     steps {
