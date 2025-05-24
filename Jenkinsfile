@@ -321,166 +321,6 @@ pipeline {
                 }
             }
         }
-        stage("preProduction Deployment Workflow") {
-            when {
-                branch 'preprod' // Or 'master'
-            }
-            stages {
-                stage("Approval Before Deploying to preprod Production") {
-                    steps {
-                        input message: "Do you approve deployment to Production?", ok: "Deploy Now", submitter: "manager,admin"
-                    }
-                }
-                stage("Clone Repo with Main Branch & Get Version") {
-                    steps {
-                        script{
-                            // Clone the dev branch
-                            git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
-                            // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
-
-                            // Fetch all tags
-                            sh 'git fetch --tags'
-
-                            // Get the latest tag correctly
-                            def version = sh(
-                                script: "git describe --tags \$(git rev-list --tags --max-count=1)",
-                                returnStdout: true
-                            ).trim()
-                            env.version = version
-                            echo "VERSION=${env.VERSION}"
-                        }
-                    }
-                }
-                stage("Detect Programming Language") {
-                    steps {
-                        detectLanguage() // Calls vars/detectLanguage.groovy
-                    }
-                }
-                stage("Static Code Analysis at Staging") {
-                    steps {
-                        runSonarQubeScan(env.SONAR_PROJECT_KEY)
-                    }
-                }
-                stage("Unit Test Analysis at Staging") {
-                    steps {
-                        runUnitTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Install Dependencies and Scan Dependencies at Staging") {
-                    steps {
-                        installAppDependencies(env.DETECTED_LANG)
-                        performDependencyScan(env.DETECTED_LANG)
-                    }
-                }
-                stage("Code Coverage at Staging") {
-                    steps {
-                        calculateCodeCoverage(env.DETECTED_LANG)
-                    }
-                }
-                stage("Create Archiving File at Staging Env") {
-                    steps {
-                        createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                    }
-                }
-                stage("Push Artifact to Storage at Staging") {
-                    steps {
-                        pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
-                    }
-                }
-                stage("Perform Docker Image Build for preprod Env") {
-                    steps {
-                        buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
-                    }
-                }
-                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
-                    steps {
-                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Push Docker Image to preprod Registry") {
-                    steps {
-                        pushDockerImageToRegistry("${env.docker_registr}", "${env.docker_credentials}", "${env. DOCKER_USERNAME}${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Deploy to preprod") {
-                    steps {
-                        withKubeConfig(
-                            caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                            clusterName: env.kubernetesClusterName,     // Now dynamic
-                            contextName: '',
-                            credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                            namespace: "${env.BRANCH_NAME}",
-                            restrictKubeConfigAccess: false,
-                            serverUrl: env.kubernetes_endpoint
-                        ){
-                            // Change Kubernetes service selector to route traffic to Green
-                            sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
-                        }
-                    }
-                }
-                stage("Smoke Test in preProduction") {
-                    steps {
-                        performSmokeTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Sanity Test in preProduction") {
-                    steps {
-                        performSanityTesting(env.DETECTED_LANG)
-                    }
-                }
-
-                stage("Full Integration Tests in preprod Env") {
-                    steps {
-                        performIntegrationTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Functional Testing in preprod Env") {
-                    steps {
-                        performApiTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("API Testing in preprod Env") {
-                    steps {
-                        performApiTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Regression Testing in preprdo Env") {
-                    steps {
-                        performRegressionTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Database Testing in preprod Env") {
-                    steps {
-                        performDatabaseTesting()
-                    }
-                }
-                stage("Generate Version File preprod Env") {
-                    steps {
-                        generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
-                    }
-                }
-                stage("Need the manual approval to complete the preprod env"){
-                    steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
-                    }
-                }
-                stage("Approval for Staging Success") {
-                    steps {
-                        input message: "Do you approve to proceed to Production Environment?", ok: "Approve", submitter: "manager,admin"
-                    }
-                }
-                stage("preprod deployment status"){
-                    steps{
-                        echo "succefully deployed the applciation into preprod"
-                    }
-                }
-            }
-        }
         stage("deploying the application into prod"){
             when {
                 branch 'main' // Or 'master'
@@ -523,14 +363,11 @@ pipeline {
                         detectLanguage() // Calls vars/detectLanguage.groovy
                     }
                 }
-                stage("Static Code Analysis at Staging") {
+                stage("Static Code Analysis and unit test and code coverage at Staging") {
                     steps {
                         runSonarQubeScan(env.SONAR_PROJECT_KEY)
-                    }
-                }
-                stage("Unit Test Analysis at Staging") {
-                    steps {
                         runUnitTests(env.DETECTED_LANG)
+                        calculateCodeCoverage(env.DETECTED_LANG)
                     }
                 }
                 stage("Install Dependencies and Scan Dependencies at Staging") {
@@ -539,28 +376,15 @@ pipeline {
                         performDependencyScan(env.DETECTED_LANG)
                     }
                 }
-                stage("Code Coverage at Staging") {
-                    steps {
-                        calculateCodeCoverage(env.DETECTED_LANG)
-                    }
-                }
-                stage("Create Archiving File at Staging Env") {
+                stage("Create Archiving File and push the artifact at Staging Env") {
                     steps {
                         createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                    }
-                }
-                stage("Push Artifact to Storage at Staging") {
-                    steps {
                         pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
                     }
                 }
-                stage("Perform Docker Image Build for prod Env") {
+                stage("Perform build and   docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", env.VERSION_TAG, '.')
-                    }
-                }
-                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
-                    steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
