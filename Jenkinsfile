@@ -12,6 +12,7 @@ pipeline {
             steps{
                 script{
                     def projectConfig = readJSON file: 'config.json'
+                        env.github_repo=projectConfig.github_repo
                     // env.service_name = projectConfig.serviceName
                     // env.notificationRecipients = projectConfig.notificationRecipients
                     // env.docker_username=projectConfig.docker_username
@@ -38,7 +39,7 @@ pipeline {
                     steps {
                         script{
                             // Clone the dev branch
-                            git branch: "${env.BRANCH_NAME}",url: "${params.GITHUB_REPO}"
+                            git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
                             // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
 
                             // Fetch all tags
