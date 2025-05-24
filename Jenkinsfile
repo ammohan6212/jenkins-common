@@ -59,24 +59,12 @@ pipeline {
                         detectLanguage() // Calls vars/detectLanguage.groovy
                     }
                 }
-                stage("Linting the Code") {
+                stage("Linting the Code and terraform linting and kubernetes linting and  docker linting") {
                     steps {
                         runLinter(env.DETECTED_LANG)
-                    }
-                }
-                stage("Infrastructure Linting") {
-                    steps {
-                        runInfrastructureLinting('terraform/') // Pass the path to your infrastructure code
-                    }
-                }
-                stage("Perform Kubernetes Linting") {
-                    steps {
-                        runKubernetesLinting('kubernetes/') // Pass the path to your Kubernetes manifests
-                    }
-                }
-                stage("Perform Docker Linting & Validation") {
-                    steps {
-                        validateDockerImage('Dockerfile') // Validates the Dockerfile itself
+                        runInfrastructureLinting('terraform/')
+                        runKubernetesLinting('kubernetes/') 
+                        validateDockerImage('Dockerfile')
                     }
                 }
                 stage("YAML or JSON Schema Validation") {
@@ -91,54 +79,21 @@ pipeline {
                         performSecretsDetection('.') // Scan the entire workspace
                     }
                 }
-                stage("Install Dependencies") {
+                stage("Install Dependencies and dependency scanning and type checking and unit tests and code coverage calcualtion ") {
                     steps {
                         installAppDependencies(env.DETECTED_LANG)
-                    }
-                }
-                stage("Dependency Scanning / SCA") {
-                    steps {
                         performDependencyScan(env.DETECTED_LANG)
-                    }
-                }
-                stage("Type Checking") {
-                    steps {
                         runTypeChecks(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Unit Tests") {
-                    steps {
                         runUnitTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Test Code Coverage Calculation") {
-                    steps {
                         calculateCodeCoverage(env.DETECTED_LANG)
                     }
                 }
-                stage("Perform Static Code Analysis using SonarQube") {
+                stage("sonarqube and Mutation Testing and snapshot and component testing at Dev") {
                     steps {
                         runSonarQubeScan(env.SONAR_PROJECT_KEY)
-                    }
-                }
-                stage("Mutation Testing at Dev") {
-                    steps {
                         runMutationTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Snapshot Testing at Dev") {
-                    steps {
                         runSnapshotTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Component Testing at Dev") {
-                    steps {
                         runComponentTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Feature Flag Verification at Dev") {
-                    steps {
-                        verifyFeatureFlags(env.DETECTED_LANG)
                     }
                 }
                 stage("Building the Application") {
@@ -146,23 +101,15 @@ pipeline {
                         buildApplication(env.DETECTED_LANG)
                     }
                 }
-                stage("Create Archiving File") {
+                stage("Create Archiving File and push the artifact ") {
                     steps {
                         createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
+                        pushArtifact("${env.service_name}-${env.version}-${env.BRANCH_NAME}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
                     }
                 }
-                stage("Push Artifact to Storage") {
-                    steps {
-                        pushArtifact("${env.service_name}-${env.version}-${env.BRANCH_NAME}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}") // Example for S3
-                    }
-                }
-                stage("Perform Docker Image Build") {
+                stage("Perform building and  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
-                    }
-                }
-                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
-                    steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
@@ -172,23 +119,11 @@ pipeline {
                         scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
-                stage("Perform Integration with Docker Containers") {
+                stage("Perform Integration and ui/component testingand static security analysis and chaos testing with Docker Containers") {
                     steps {
                         integrationWithDocker()
-                    }
-                }
-                stage("UI/Component Testing") {
-                    steps {
                         runUiComponentTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Static Security Analysis") {
-                    steps {
                         performStaticSecurityAnalysis(env.DETECTED_LANG)
-                    }
-                }
-                stage("Chaos Testing") {
-                    steps {
                         runChaosTests(env.DETECTED_LANG)
                     }
                 }
@@ -213,59 +148,23 @@ pipeline {
                         }
                     }
                 }
-                stage("Perform Smoke Testing After Dev Deploy") {
+                stage("Perform Smoke Testing and sanity testing and APi testing and integratio testing andlight ui test and regression testing feature flag and chaos and security After Dev Deploy") {
                     steps {
                         performSmokeTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Sanity Testing After Dev Deploy") {
-                    steps {
                         performSanityTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform API Testing After Dev Deploy") {
-                    steps {
                         performApiTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Integration Testing After Dev Deploy") {
-                    steps {
                         performIntegrationTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Light UI Tests After Dev Deploy") {
-                    steps {
                         performLightUiTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Regression Testing After Dev Deploy") {
-                    steps {
                         performRegressionTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Feature Flag Checks After Dev Deploy") {
-                    steps {
                         performFeatureFlagChecks(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Security Checks After Dev Deploy") {
-                    steps {
                         performSecurityChecks(env.DETECTED_LANG)
-                    }
-                }
-                stage("Perform Chaos Testing After Dev Deploy") {
-                    steps {
                         performChaosTestingAfterDeploy(env.DETECTED_LANG)
+                        performLoadPerformanceTesting(env.DETECTED_LANG)
                     }
-                }
+                }                
                 stage("Perform Logging and Monitoring Checks After Dev Deploy") {
                     steps {
                         performLoggingMonitoringChecks()
-                    }
-                }
-                stage("Perform Light Load/Performance Testing After Dev Deploy") {
-                    steps {
-                        performLoadPerformanceTesting(env.DETECTED_LANG)
                     }
                 }
                 stage("Need the manual approval to complete the dev env"){
@@ -323,44 +222,24 @@ pipeline {
                         }
                     }
                 }
-                stage("Static Code Analysis at Test") {
-                    steps {
-                        runSonarQubeScan(env.SONAR_PROJECT_KEY)
-                    }
-                }
-                stage("Unit Test Analysis at Test") {
+                stage("Static Code Analysis and unit tests and code coverage and dependencies and dependency check at Test") {
                     steps {
                         runUnitTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Install Dependencies and Scan Dependencies at Test") {
-                    steps {
+                        calculateCodeCoverage(env.DETECTED_LANG)
+                        runSonarQubeScan(env.SONAR_PROJECT_KEY)
                         installAppDependencies(env.DETECTED_LANG)
                         performDependencyScan(env.DETECTED_LANG)
                     }
                 }
-                stage("Code Coverage at Test") {
-                    steps {
-                        calculateCodeCoverage(env.DETECTED_LANG)
-                    }
-                }
-                stage("Create Archiving File at Test Stage") {
+                stage("Create Archiving File and push the artifact  at Test Stage") {
                     steps {
                         createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                    }
-                }
-                stage("Push Artifact to Storage at Test Stage") {
-                    steps {
                         pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
                     }
                 }
-                stage("Perform Docker Image Build for Test Env") {
+                stage("Perform building and  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.VERSION_TAG, '.')
-                    }
-                }
-                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
-                    steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
@@ -442,163 +321,6 @@ pipeline {
                 }
             }
         }
-
-        stage("Staging Environment Workflow Management") {
-            when {
-                branch 'stag'
-            }
-            stages {
-                stage("Approval Before Deploying to QA Staging") {
-                    steps {
-                        input message: "Do you approve deployment to Staging?", ok: "Deploy Now", submitter: "manager,admin"
-                    }
-                }
-                stage("Clone Repo with Staging Branch & Get Version") {
-                    steps {
-                        script{
-                            // Clone the dev branch
-                            git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
-                            // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
-
-                            // Fetch all tags
-                            sh 'git fetch --tags'
-
-                            // Get the latest tag correctly
-                            def version = sh(
-                                script: "git describe --tags \$(git rev-list --tags --max-count=1)",
-                                returnStdout: true
-                            ).trim()
-                            env.version = version
-                            echo "VERSION=${env.VERSION}"
-                        }
-                    }
-                }
-                stage("Detect Programming Language") {
-                    steps {
-                        detectLanguage() // Calls vars/detectLanguage.groovy
-                    }
-                }
-                stage("Static Code Analysis at Staging") {
-                    steps {
-                        runSonarQubeScan(env.SONAR_PROJECT_KEY)
-                    }
-                }
-                stage("Unit Test Analysis at Staging") {
-                    steps {
-                        runUnitTests(env.DETECTED_LANG)
-                    }
-                }
-                stage("Install Dependencies and Scan Dependencies at Staging") {
-                    steps {
-                        installAppDependencies(env.DETECTED_LANG)
-                        performDependencyScan(env.DETECTED_LANG)
-                    }
-                }
-                stage("Code Coverage at Staging") {
-                    steps {
-                        calculateCodeCoverage(env.DETECTED_LANG)
-                    }
-                }
-                stage("Create Archiving File at Staging Env") {
-                    steps {
-                        createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                    }
-                }
-                stage("Push Artifact to Storage at Staging") {
-                    steps {
-                        pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
-                    }
-                }
-                stage("Perform Docker Image Build for Staging Env") {
-                    steps {
-                        buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
-                    }
-                }
-                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
-                    steps {
-                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Push Docker Image to stag Registry") {
-                    steps {
-                        pushDockerImageToRegistry("${env.docker_registr}", "${env.docker_credentials}", "${env. DOCKER_USERNAME}${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Deploy to stagging") {
-                    steps {
-                        withKubeConfig(
-                            caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                            clusterName: env.kubernetesClusterName,     // Now dynamic
-                            contextName: '',
-                            credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                            namespace: "${env.BRANCH_NAME}",
-                            restrictKubeConfigAccess: false,
-                            serverUrl: env.kubernetes_endpoint
-                        ) {
-                            // Change Kubernetes service selector to route traffic to Green
-                            sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
-                        }
-                    }
-                }
-                stage("Smoke Test in Staging Env") {
-                    steps {
-                        performSmokeTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Sanity Tests in Staging Env") {
-                    steps {
-                        performSanityTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Full Integration Tests in Staging Env") {
-                    steps {
-                        performIntegrationTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Functional Testing in Staging Env") {
-                    steps {
-                        performApiTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("API Testing in Staging Env") {
-                    steps {
-                        performApiTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Regression Testing in Staging Env") {
-                    steps {
-                        performRegressionTesting(env.DETECTED_LANG)
-                    }
-                }
-                stage("Database Testing in Staging Env") {
-                    steps {
-                        performDatabaseTesting()
-                    }
-                }
-                stage("Generate Version File Staging Env") {
-                    agent { label 'security-agent'}
-                    steps {
-                        generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
-                    }
-                }
-                stage("Need the manual approval to complete the stag env"){
-                    steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
-                    }
-                }
-                stage("Approval for Staging Success") {
-                    steps {
-                        input message: "Do you approve to proceed to Production Environment?", ok: "Approve", submitter: "manager,admin"
-                    }
-                }
-            }
-        }
-
         stage("preProduction Deployment Workflow") {
             when {
                 branch 'preprod' // Or 'master'
