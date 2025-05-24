@@ -843,7 +843,6 @@ pipeline {
                 }
             }
         }
-        }
         stage("deploying the application into prod"){
             when {
                 branch 'main' // Or 'master'
@@ -1064,11 +1063,9 @@ pipeline {
             }
 
         }
-
-    // Post-build actions for notification
     post {
         always {
-            cleanWs() // Clean up workspace regardless of build status
+            cleanWs() 
         }
         success {
             sendEmailNotification('SUCCESS', env.RECIPIENTS)
