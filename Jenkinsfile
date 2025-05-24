@@ -161,34 +161,15 @@ pipeline {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
                     }
                 }
-                stage("Docker Image Validation") {
+                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Trivy)") {
-                    steps {
+                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Snyk)") {
-                    steps {
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                    }
-                }
-                stage("Perform Container Scanning (Docker Scout)") {
-                    steps {
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Grype)") {
-                    steps {
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Syft & Dockle)") {
-                    steps {
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
+                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
                 stage("Perform Integration with Docker Containers") {
@@ -378,34 +359,14 @@ pipeline {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.VERSION_TAG, '.')
                     }
                 }
-                stage("Docker Linting and Image Validation at Test Env") {
+                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Trivy) at Test Env") {
-                    steps {
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Snyk) at Test Env") {
-                    steps {
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                    }
-                }
-                stage("Perform Container Scanning (Docker Scout) at Test Env") {
-                    steps {
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Grype) at Test Env") {
-                    steps {
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Syft & Dockle) at Test Env") {
-                    steps {
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
+                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
                 stage("Push Docker Image to Preprod Registry") {
@@ -553,34 +514,14 @@ pipeline {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
                     }
                 }
-                stage("Docker Linting and Image Validation at Staging Env") {
+                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Trivy) at Staging Env") {
-                    steps {
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Snyk) at Staging Env") {
-                    steps {
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                    }
-                }
-                stage("Perform Container Scanning (Docker Scout) at Staging Env") {
-                    steps {
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Grype) at Staging Env") {
-                    steps {
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Syft & Dockle) at Staging Env") {
-                    steps {
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
+                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
                 stage("Push Docker Image to stag Registry") {
@@ -729,39 +670,14 @@ pipeline {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
                     }
                 }
-                stage("Docker Linting and Image Validation at Staging Env") {
+                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Trivy) at Staging Env") {
-                    steps {
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Snyk) at Staging Env") {
-                    steps {
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                    }
-                }
-                stage("Perform Container Scanning (Docker Scout) at Staging Env") {
-                    steps {
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Grype) at Staging Env") {
-                    steps {
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Syft & Dockle) at Staging Env") {
-                    steps {
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Final Docker Image Validation") {
-                    steps {
-                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
+                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
                 stage("Push Docker Image to preprod Registry") {
@@ -916,44 +832,19 @@ pipeline {
                         pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
                     }
                 }
-                stage("Perform Docker Image Build for preprod Env") {
+                stage("Perform Docker Image Build for prod Env") {
                     steps {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", env.VERSION_TAG, '.')
                     }
                 }
-                stage("Docker Linting and Image Validation at Staging Env") {
+                stage("Perform  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Trivy) at Staging Env") {
-                    steps {
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Snyk) at Staging Env") {
-                    steps {
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                    }
-                }
-                stage("Perform Container Scanning (Docker Scout) at Staging Env") {
-                    steps {
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Grype) at Staging Env") {
-                    steps {
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Perform Container Scanning (Syft & Dockle) at Staging Env") {
-                    steps {
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
-                }
-                stage("Final Docker Image Validation") {
-                    steps {
-                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
+                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
                 stage("send the notification to CAB team to verify the deployment"){
