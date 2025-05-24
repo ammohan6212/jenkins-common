@@ -848,7 +848,7 @@ pipeline {
                 branch 'main' // Or 'master'
             }
             stages{
-                stage("Approval Before Deploying to preprod Production") {
+                stage("Approval Before Deploying to Production") {
                     steps {
                         input message: "Do you approve deployment to Production?", ok: "Deploy Now", submitter: "manager,admin"
                     }
