@@ -2,7 +2,9 @@
 
 pipeline {
     agent any
-
+     parameters([
+        string(name: 'GITHUB_REPO', defaultValue: '', description: 'GitHub repository URL')
+    ])
     
 
     stages {
@@ -12,7 +14,6 @@ pipeline {
                     def projectConfig = readJSON file: 'config.json'
                     // env.service_name = projectConfig.serviceName
                     // env.notificationRecipients = projectConfig.notificationRecipients
-                    env.github_repo=projectConfig.github_repo
                     // env.docker_username=projectConfig.docker_username
                     // env.kubernetes_endpoint=projectConfig.kubernetes_endpoint
                     // env.bucket_name=projectConfig.bucket_name 
@@ -37,7 +38,7 @@ pipeline {
                     steps {
                         script{
                             // Clone the dev branch
-                            git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
+                            git branch: "${env.BRANCH_NAME}",url: "${params.GITHUB_REPO}"
                             // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
 
                             // Fetch all tags
