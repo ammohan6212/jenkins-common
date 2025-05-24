@@ -826,7 +826,7 @@ pipeline {
                         generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
                     }
                 }
-                stage("Need the manual approval to complete the stag env"){
+                stage("Need the manual approval to complete the preprod env"){
                     steps{
                         sendEmailNotification('Alert', env.RECIPIENTS)
                     }
@@ -969,7 +969,7 @@ pipeline {
                     }
                 }
                 
-                stage("Need the manual approval to deploy the application into prod"){
+                stage("Need the manual approval from manager and stakeholders to deploy the application into prod"){
                     steps{
                         sendEmailNotification('Alert', env.RECIPIENTS)
                     }
