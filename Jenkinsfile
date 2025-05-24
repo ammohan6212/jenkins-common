@@ -2,11 +2,6 @@
 
 pipeline {
     agent any
-     parameters{
-        string(name: 'GITHUB_REPO', defaultValue: '', description: 'GitHub repository URL')
-     }
-    
-
     stages {
         stage("Load project configuration"){
             steps{
