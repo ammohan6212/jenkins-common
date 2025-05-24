@@ -10,19 +10,19 @@ pipeline {
             steps{
                 script{
                     def projectConfig = readJSON file: 'config.json'
-                    env.service_name = projectConfig.serviceName
-                    env.notificationRecipients = projectConfig.notificationRecipients
+                    // env.service_name = projectConfig.serviceName
+                    // env.notificationRecipients = projectConfig.notificationRecipients
                     env.github_repo=projectConfig.github_repo
-                    env.docker_username=projectConfig.docker_username
-                    env.kubernetes_endpoint=projectConfig.kubernetes_endpoint
-                    env.bucket_name=projectConfig.bucket_name 
-                    env.bucket_path=projectConfig.bucket_path   
-                    env.docker_credentials=projectConfig.docker_credentials
-                    env.docker_registry=projectConfig.docker_registry
-                    env.kubernetesClusterName=projectConfig.kubernetesClusterName
-                    env.kubernetesCredentialsId=projectConfig.kubernetesCredentialsId
-                    env.kubernetesCaCertificate=projectConfig.kubernetesCaCertificate
-                    env.gcp_credid=projectConfig.gcp_credid
+                    // env.docker_username=projectConfig.docker_username
+                    // env.kubernetes_endpoint=projectConfig.kubernetes_endpoint
+                    // env.bucket_name=projectConfig.bucket_name 
+                    // env.bucket_path=projectConfig.bucket_path   
+                    // env.docker_credentials=projectConfig.docker_credentials
+                    // env.docker_registry=projectConfig.docker_registry
+                    // env.kubernetesClusterName=projectConfig.kubernetesClusterName
+                    // env.kubernetesCredentialsId=projectConfig.kubernetesCredentialsId
+                    // env.kubernetesCaCertificate=projectConfig.kubernetesCaCertificate
+                    // env.gcp_credid=projectConfig.gcp_credid
                     // env.aws_credid=projectConfig.aws_credid
                 }
             }
