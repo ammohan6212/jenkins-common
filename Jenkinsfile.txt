@@ -124,7 +124,6 @@ pipeline {
                     steps {
                         buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
                         validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                         scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
@@ -351,7 +350,9 @@ pipeline {
                 stage("create the change request containing what is changing and any DB changes and any downtime and rollback plan if deplyoment failes and deploymentwindow and stakeholders"){
                     steps{
                         script{
-                            sh """"""
+                            sh """
+                            create a change request for production deployment
+                            """
                         }
                     }
                 }
@@ -481,17 +482,26 @@ pipeline {
                         performSanityTesting(env.DETECTED_LANG)
                     }
                 }
-                stage("monitoring the prod environment"){
-                    steps {
-                        script {
-                            sh """"""
+                stage("is smoke and sanity and synthatic everything is fine"){
+                    steps{
+                        script{
+                            input message: "Do you approve deployment to Production?", ok: "Deploy Now", submitter: "manager,admin"
                         }
                     }
                 }
-                stage("if prod fails rollback to the previous verion"){
-                    steps { 
+                stage("monitoring the prod environment"){
+                    steps {
                         script {
-                            sh """"""
+                            sh """
+                            montoring happens here
+                            """
+                        }
+                    }
+                }
+                stage("is monitoring is fine fine"){
+                    steps{
+                        script{
+                            input message: "Do you approve deployment to Production?", ok: "Deploy Now", submitter: "manager,admin"
                         }
                     }
                 }
