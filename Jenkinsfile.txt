@@ -317,6 +317,7 @@ pipeline {
                         performRegressionTesting(env.DETECTED_LANG)
                         performDatabaseTesting()
                         performLoadPerformanceTesting(env.DETECTED_LANG)
+                        performChaosTestingAfterDeploy(env.DETECTED_LANG)
                     }
                 }
                 stage("Generate Version File Test Env") {
@@ -332,9 +333,22 @@ pipeline {
                 }
                 stage("Approval for Test Success") {
                     steps {
-                        input message: "Do you approve to proceed to Staging Environment?", ok: "Approve", submitter: "manager,admin"
+                        script {
+                            try {
+                                input message: "Do you approve to proceed to Staging Environment?",
+                                    ok: "Approve",
+                                    submitter: "manager,admin"
+                                echo "Approval granted. Proceeding to Staging Environment."
+                                currentBuild.result = 'SUCCESS'
+                            } catch (err) {
+                                echo "Approval was not granted. Error: ${err}"
+                                currentBuild.result = 'FAILURE'
+                                error("Pipeline failed due to rejection or interruption.")
+                            }
+                        }
                     }
                 }
+
             }
         }
         stage("deploying the application into prod"){
@@ -480,6 +494,12 @@ pipeline {
                         performSmokeTesting(env.DETECTED_LANG)
                         performLoadPerformanceTesting(env.DETECTED_LANG)
                         performSanityTesting(env.DETECTED_LANG)
+                        performIntegrationTesting(env.DETECTED_LANG)
+                        performApiTesting(env.DETECTED_LANG)
+                        performRegressionTesting(env.DETECTED_LANG)
+                        performDatabaseTesting()
+                        performChaosTestingAfterDeploy(env.DETECTED_LANG)
+
                     }
                 }
                 stage("is smoke and sanity and synthatic everything is fine"){
@@ -562,9 +582,6 @@ pipeline {
                         }
                     }
                 }
-
-
-
             }
 
         }
