@@ -531,11 +531,6 @@ pipeline {
                         generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
                     }
                 }
-                stage("Need the manual approval to deploy the application into prod"){
-                    steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
-                    }
-                }
                 stage("Manual Verification of Production Deployment") {
                     steps {
                         script {
