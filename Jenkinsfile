@@ -547,16 +547,16 @@ pipeline {
             cleanWs() 
         }
         success {
-            sendEmailNotification('SUCCESS', env.RECIPIENTS)
+            sendEmailNotification('SUCCESS', env.notificationRecipients)
         }
         unstable {
-            sendEmailNotification('UNSTABLE', env.RECIPIENTS)
+            sendEmailNotification('UNSTABLE', env.notificationRecipients)
         }
         failure {
-            sendEmailNotification('FAILURE', env.RECIPIENTS)
+            sendEmailNotification('FAILURE', env.notificationRecipients)
         }
         aborted {
-            sendEmailNotification('ABORTED', env.RECIPIENTS)
+            sendEmailNotification('ABORTED', env.notificationRecipients)
         }
     }
 }
