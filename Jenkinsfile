@@ -516,8 +516,6 @@ pipeline {
                         }
                     }
                 }
-
-
                 stage("prod deployment is successful"){
                     steps{
                         script{
