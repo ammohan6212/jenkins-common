@@ -7,20 +7,20 @@ pipeline {
             steps{
                 script{
                     def projectConfig = readJSON file: 'config.json'
-                        // env.github_repo=projectConfig.github_repo
-                        // env.service_name = projectConfig.serviceName
-                        // env.notificationRecipients = projectConfig.notificationRecipients
-                        // env.docker_username=projectConfig.docker_username
-                        // env.kubernetes_endpoint=projectConfig.kubernetes_endpoint
-                        // env.bucket_name=projectConfig.bucket_name 
-                        // env.bucket_path=projectConfig.bucket_path   
-                        // env.docker_credentials=projectConfig.docker_credentials
-                        // env.docker_registry=projectConfig.docker_registry
-                        // env.kubernetesClusterName=projectConfig.kubernetesClusterName
-                        // env.kubernetesCredentialsId=projectConfig.kubernetesCredentialsId
-                        // env.kubernetesCaCertificate=projectConfig.kubernetesCaCertificate
-                        // env.gcp_credid=projectConfig.gcp_credid
-                        // env.aws_credid=projectConfig.aws_credid
+                        env.github_repo=projectConfig.github_repo
+                        env.service_name = projectConfig.serviceName
+                        env.notificationRecipients = projectConfig.notificationRecipients
+                        env.docker_username=projectConfig.docker_username
+                        env.kubernetes_endpoint=projectConfig.kubernetes_endpoint
+                        env.bucket_name=projectConfig.bucket_name 
+                        env.bucket_path=projectConfig.bucket_path   
+                        env.docker_credentials=projectConfig.docker_credentials
+                        env.docker_registry=projectConfig.docker_registry
+                        env.kubernetesClusterName=projectConfig.kubernetesClusterName
+                        env.kubernetesCredentialsId=projectConfig.kubernetesCredentialsId
+                        env.kubernetesCaCertificate=projectConfig.kubernetesCaCertificate
+                        env.gcp_credid=projectConfig.gcp_credid
+                        env.aws_credid=projectConfig.aws_credid
                 }
             }
         }
@@ -33,26 +33,7 @@ pipeline {
                 stage("Clone Dev Repo & Get Version") {
                     steps {
                         script{
-                            try{
-                            // Clone the dev branch
-                                git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
-                                // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
-
-                                // Fetch all tags
-                                sh 'git fetch --tags'
-
-                                // Get the latest tag correctly
-                                def version = sh(
-                                    script: "git describe --tags \$(git rev-list --tags --max-count=1)",
-                                    returnStdout: true
-                                ).trim()
-                                env.version = version
-                                echo "VERSION=${env.VERSION}"
-                            } catch(err) {
-                                echo "❌ Git clone or version fetch failed: ${err}"
-                                currentBuild.result = 'FAILURE'
-                                error("Stopping pipeline")
-                            }
+                            cloneRepoAndGetVersion(env.BRANCH_NAME, env.github_repo)
                         }
                     }
                 }
@@ -68,13 +49,6 @@ pipeline {
                         runInfrastructureLinting('terraform/')
                         runKubernetesLinting('kubernetes/') 
                         validateDockerImage('Dockerfile')
-                    }
-                }
-                stage("YAML or JSON Schema Validation") {
-                    steps {
-                        // Example: Adjust to your specific YAML/JSON files and schemas
-                        // performYamlJsonValidation('config.yaml', 'schemas/config_schema.json')
-                        echo "Skipping general YAML/JSON validation (add specific calls here)."
                     }
                 }
                 stage("Secrets Detection") {
@@ -121,15 +95,15 @@ pipeline {
                 }
                 stage("Perform building and  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     agent { label 'security-agent' }
-                    steps {
-                        buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
-                        validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
-                        scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                        scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
-                    }
+                        steps {
+                            buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
+                            validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                            scanContainerTrivy("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                            scanContainerSyftDockle("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                            scanContainerSnyk("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}", "Dockerfile")
+                            scanContainerDockerScout("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                            scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        }
                 }
                 stage("Perform Integration and ui/component testingand static security analysis and chaos testing with Docker Containers") {
                     agent { label 'security-agent' }
@@ -208,7 +182,6 @@ pipeline {
                 }
             }
         }
-
         stage("Test Environment Workflow") {
             when {
                 branch 'test'
@@ -227,26 +200,7 @@ pipeline {
                 stage("Clone Repo with Test Branch & Get Version") {
                     steps {
                         script{
-                            try{
-                            // Clone the dev branch
-                                git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
-                                // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
-
-                                // Fetch all tags
-                                sh 'git fetch --tags'
-
-                                // Get the latest tag correctly
-                                def version = sh(
-                                    script: "git describe --tags \$(git rev-list --tags --max-count=1)",
-                                    returnStdout: true
-                                ).trim()
-                                env.version = version
-                                echo "VERSION=${env.VERSION}"
-                            } catch(err) {
-                                echo "❌ Git clone or version fetch failed: ${err}"
-                                currentBuild.result = 'FAILURE'
-                                error("Stopping pipeline")
-                            }
+                            cloneRepoAndGetVersion(env.BRANCH_NAME, env.github_repo)
                         }
                     }
                 }
@@ -373,26 +327,7 @@ pipeline {
                 stage("Clone Repo with Main Branch & Get Version") {
                     steps {
                         script{
-                            try{
-                            // Clone the dev branch
-                                git branch: "${env.BRANCH_NAME}",url: "${env.github_repo}"
-                                // git branch: 'dev',credentialsId: 'github-token',url: "https://github.com/ammohan6212/front-end.git"
-
-                                // Fetch all tags
-                                sh 'git fetch --tags'
-
-                                // Get the latest tag correctly
-                                def version = sh(
-                                    script: "git describe --tags \$(git rev-list --tags --max-count=1)",
-                                    returnStdout: true
-                                ).trim()
-                                env.version = version
-                                echo "VERSION=${env.VERSION}"
-                            } catch(err) {
-                                echo "❌ Git clone or version fetch failed: ${err}"
-                                currentBuild.result = 'FAILURE'
-                                error("Stopping pipeline")
-                            }
+                            cloneRepoAndGetVersion(env.BRANCH_NAME, env.github_repo)
                         }
                     }
                 }
