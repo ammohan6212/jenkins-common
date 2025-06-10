@@ -83,15 +83,17 @@ pipeline {
                 }
                 stage("Create Archiving File and push the artifact ") {
                     agent { label 'security-agent' }
-                    steps {
-                        try{
-                            createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                            pushArtifact("${env.service_name}-${env.version}-${env.BRANCH_NAME}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
-                        } catch(err){
-                            echo "failed to push the artifact to specifcif repository ${err}"
-                            error("Stopping pipeline")
+                        steps {
+                            script {
+                                try {
+                                    createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
+                                    pushArtifact("${env.service_name}-${env.version}-${env.BRANCH_NAME}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
+                                } catch (err) {
+                                    echo "failed to push the artifact to specific repository ${err}"
+                                    error("Stopping pipeline")
+                                }
+                            }
                         }
-                    }
                 }
                 stage("Perform building and  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     agent { label 'security-agent' }
@@ -122,27 +124,29 @@ pipeline {
                 }
                 stage("Deploy to Dev") {
                     agent { label 'security-agent' }
-                    steps {
-                        try{
-                            withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
-                                ) {
-                                    // Change Kubernetes service selector to route traffic to Green
-                                    sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                        steps {
+                            script {
+                                try {
+                                    withKubeConfig(
+                                        caCertificate: env.kubernetesCaCertificate, // Now dynamic
+                                        clusterName: env.kubernetesClusterName,     // Now dynamic
+                                        contextName: '',
+                                        credentialsId: env.kubernetesCredentialsId, // Now dynamic
+                                        namespace: "${env.BRANCH_NAME}",
+                                        restrictKubeConfigAccess: false,
+                                        serverUrl: env.kubernetes_endpoint
+                                    ) {
+                                        // Change Kubernetes service selector to route traffic to Green
+                                        sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                                    }
+                                } catch (err) {
+                                    echo "failed to deploy to the production ${err}"
+                                    error("Stopping pipeline")
                                 }
-                        } catch(err){
-                            echo "failed to deploy to the production ${err}"
-                            error("Stopping pipeline")
+                            }
                         }
-
-                    }
                 }
+
                 stage("Perform Smoke Testing and sanity testing and APi testing and integratio testing andlight ui test and regression testing feature flag and chaos and security After Dev Deploy") {
                     agent { label 'security-agent' }
                     steps {
@@ -241,26 +245,29 @@ pipeline {
                 }
                 stage("Deploy to test") {
                     agent { label 'security-agent' }
-                    steps {
-                        try{
-                            withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
-                                ) {
-                                    // Change Kubernetes service selector to route traffic to Green
-                                    sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                        steps {
+                            script {
+                                try {
+                                    withKubeConfig(
+                                        caCertificate: env.kubernetesCaCertificate, // Now dynamic
+                                        clusterName: env.kubernetesClusterName,     // Now dynamic
+                                        contextName: '',
+                                        credentialsId: env.kubernetesCredentialsId, // Now dynamic
+                                        namespace: "${env.BRANCH_NAME}",
+                                        restrictKubeConfigAccess: false,
+                                        serverUrl: env.kubernetes_endpoint
+                                    ) {
+                                        // Change Kubernetes service selector to route traffic to Green
+                                        sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                                    }
+                                } catch (err) {
+                                    echo "failed to deploy to the production ${err}"
+                                    error("Stopping pipeline")
                                 }
-                        } catch(err){
-                            echo "failed to deploy to the production ${err}"
-                            error("Stopping pipeline")
+                            }
                         }
-                    }
                 }
+
                 stage("Smoke Test and sanity and integration and functional and api and regression in Test Env") {
                     agent { label 'security-agent' }
                     steps {
@@ -401,28 +408,31 @@ pipeline {
                         pushDockerImageToRegistry("${env.docker_registr}", "${env.docker_credentials}", "${env. DOCKER_USERNAME}${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
-                stage("Deploy to prod at peak off -hours") {
+                stage("Deploy to prod at peak off-hours") {
                     agent { label 'security-agent' }
-                    steps {
-                         try{
-                            withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
-                                ) {
-                                    // Change Kubernetes service selector to route traffic to Green
-                                    sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                        steps {
+                            script {
+                                try {
+                                    withKubeConfig(
+                                        caCertificate: env.kubernetesCaCertificate, // Now dynamic
+                                        clusterName: env.kubernetesClusterName,     // Now dynamic
+                                        contextName: '',
+                                        credentialsId: env.kubernetesCredentialsId, // Now dynamic
+                                        namespace: "${env.BRANCH_NAME}",
+                                        restrictKubeConfigAccess: false,
+                                        serverUrl: env.kubernetes_endpoint
+                                    ) {
+                                        // Change Kubernetes service selector to route traffic to Green
+                                        sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                                    }
+                                } catch (err) {
+                                    echo "failed to deploy to the production ${err}"
+                                    error("Stopping pipeline")
                                 }
-                        } catch(err){
-                            echo "failed to deploy to the production ${err}"
-                            error("Stopping pipeline")
+                            }
                         }
-                    }
                 }
+
                 stage("Smoke Test and sanity test and synthatic test and  in preProduction") {
                     agent { label 'security-agent' }
                     steps {
@@ -467,43 +477,46 @@ pipeline {
                     }
                 }
                 stage("Manual Verification of Production Deployment") {
+                    agent { label 'security-agent' }
                     steps {
                         script {
-                        env.ROLLBACK_DECISION = input(
-                            id: 'prodVerification',
-                            message: "Is production working correctly?",
-                            parameters: [
-                            choice(name: 'Decision', choices: ['Proceed', 'Rollback'], description: 'Select rollback if prod is broken')
-                            ]
-                        )
-                        if (env.ROLLBACK_DECISION == 'Rollback') {
-                            echo "⏪ Manual decision: Rolling back to previous version..."
-
-                            try {
-                                withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
-                                ) {
-                                    sh "kubectl rollout undo deployment/${env.service_name} -n ${env.BRANCH_NAME}"
-                                    sh "kubectl rollout status deployment/${env.service_name} -n ${env.BRANCH_NAME}"
-                                    echo "✅ Rollback completed"
+                            env.ROLLBACK_DECISION = input(
+                                id: 'prodVerification',
+                                message: "Is production working correctly?",
+                                parameters: [
+                                    choice(name: 'Decision', choices: ['Proceed', 'Rollback'], description: 'Select rollback if prod is broken')
+                                ]
+                            )
+                            if (env.ROLLBACK_DECISION == 'Rollback') {
+                                echo "⏪ Manual decision: Rolling back to previous version..."
+                                try {
+                                    withKubeConfig(
+                                        caCertificate: env.kubernetesCaCertificate, // Now dynamic
+                                        clusterName: env.kubernetesClusterName,     // Now dynamic
+                                        contextName: '',
+                                        credentialsId: env.kubernetesCredentialsId, // Now dynamic
+                                        namespace: "${env.BRANCH_NAME}",
+                                        restrictKubeConfigAccess: false,
+                                        serverUrl: env.kubernetes_endpoint
+                                    ) {
+                                        sh "kubectl rollout undo deployment/${env.service_name} -n ${env.BRANCH_NAME}"
+                                        sh "kubectl rollout status deployment/${env.service_name} -n ${env.BRANCH_NAME}"
+                                        echo "✅ Rollback completed"
+                                    }
+                                } catch (err) {
+                                    echo "❌ Rollback command failed: ${err.getMessage()}"
                                 }
-                        } catch (err) {
-                        echo "❌ Rollback command failed: ${err.getMessage()}"
-                        }
-                        currentBuild.result = 'FAILURE'
-                        error("🔴 Production was marked as broken. Rollback executed. Pipeline failed.")
-                        } else {
-                            echo "✅ Manual verification passed. Continuing with success flow..."
-                        }
+
+                                // Mark build as failed after rollback
+                                currentBuild.result = 'FAILURE'
+                                error("🔴 Production was marked as broken. Rollback executed. Pipeline failed.")
+                            } else {
+                                echo "✅ Manual verification passed. Continuing with success flow..."
+                            }
                         }
                     }
-                    }
+                }
+
 
                 stage("prod deployment is successful"){
                     steps{
