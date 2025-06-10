@@ -172,7 +172,7 @@ pipeline {
                 stage("Need the manual approval to complete the dev env"){
                     agent any
                     steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
+                        sendEmailNotification('Alert', env.notificationRecipients)
                     }
                 }
                 stage("Manual Approval for Dev Stage") {
@@ -199,7 +199,7 @@ pipeline {
                 stage("send the alert mail to start the test env"){
                     agent any
                     steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
+                        sendEmailNotification('Alert', env.notificationRecipients)
                     }
                 }
                 stage("Manual Approval to Start Test Env") {
@@ -298,7 +298,7 @@ pipeline {
                 stage("Need the manual approval to complete the test env"){
                     agent any
                     steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
+                        sendEmailNotification('Alert', env.notificationRecipients)
                     }
                 }
                 stage("Approval for Test Success") {
@@ -394,7 +394,7 @@ pipeline {
                 }
                 stage("send the notification to CAB team to verify the deployment"){
                     steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
+                        sendEmailNotification('Alert', env.notificationRecipients)
                     }
                 }
                 stage("need the CAB approvals before deplyign to the production"){
@@ -407,7 +407,7 @@ pipeline {
                 
                 stage("Need the manual approval from manager and stakeholders to deploy the application into prod"){
                     steps{
-                        sendEmailNotification('Alert', env.RECIPIENTS)
+                        sendEmailNotification('Alert', env.notificationRecipients)
                     }
                 }
                 stage("need approvals to next stage"){
