@@ -25,6 +25,7 @@ pipeline {
                         env.kubernetesCaCertificate=projectConfig.kubernetesCaCertificate
                         env.gcp_credid=projectConfig.gcp_credid
                         env.aws_credid=projectConfig.aws_credid
+                        env.service_port=projectConfig.service_port
                 }
             }
         }
@@ -135,16 +136,10 @@ pipeline {
                         script {
                             try {
                                 withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
+                                    caCertificate: env.kubernetesCaCertificate,clusterName: env.kubernetesClusterName,contextName: '',credentialsId: env.kubernetesCredentialsId,namespace: "${env.BRANCH_NAME}",restrictKubeConfigAccess: false,serverUrl: env.kubernetes_endpoint
                                 ) {
                                     // Change Kubernetes service selector to route traffic to Green
-                                    sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                                    sh """kubectl apply -f ${env.service_name}-deployment.yml -n ${env.BRANCH_NAME}"""
                                 }
                             } catch (err) {
                                 echo "failed to deploy to the production ${err}"
@@ -391,16 +386,10 @@ pipeline {
                         script {
                             try {
                                 withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
+                                    caCertificate: env.kubernetesCaCertificate,clusterName: env.kubernetesClusterName,contextName: '',credentialsId: env.kubernetesCredentialsId,namespace: "${env.BRANCH_NAME}",restrictKubeConfigAccess: false,serverUrl: env.kubernetes_endpoint
                                 ) {
                                     // Change Kubernetes service selector to route traffic to Green
-                                    sh """kubectl apply -f deployment.yml -n ${KUBE_NAMESPACE}"""
+                                    sh """kubectl apply -f ${env.service_name}-deployment.yml -n ${env.BRANCH_NAME}"""
                                 }
                             } catch (err) {
                                 echo "failed to deploy to the production ${err}"
@@ -545,20 +534,66 @@ pipeline {
                         script {
                             try {
                                 withKubeConfig(
-                                    caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                    clusterName: env.kubernetesClusterName,     // Now dynamic
-                                    contextName: '',
-                                    credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                    namespace: "${env.BRANCH_NAME}",
-                                    restrictKubeConfigAccess: false,
-                                    serverUrl: env.kubernetes_endpoint
+                                    caCertificate: env.kubernetesCaCertificate,clusterName: env.kubernetesClusterName,contextName: '',credentialsId: env.kubernetesCredentialsId,namespace: "${env.BRANCH_NAME}",restrictKubeConfigAccess: false,serverUrl: env.kubernetes_endpoint
                                 ) {
-                                    // Change Kubernetes service selector to route traffic to Green
-                                    sh """kubectl apply -f deployment.yml -n ${KUBE_NAMESPACE}"""
+                                    sh """
+                                    kubectl apply -f ${service_name}-deployment.yaml -n ${env.BRANCH_NAME}
+                                    kubectl rollout status deployment/${service_name} -n ${env.BRANCH_NAME}
+                                    """
                                 }
                             } catch (err) {
                                 echo "failed to deploy to the production ${err}"
                                 error("Stopping pipeline")
+                            }
+                        }
+                    }
+                }
+                stage('Automated Post-Deployment Verification & Rollback') {
+                    steps {
+                        script {
+                            withKubeConfig(
+                                    caCertificate: env.kubernetesCaCertificate,clusterName: env.kubernetesClusterName,contextName: '',credentialsId: env.kubernetesCredentialsId,namespace: "${env.BRANCH_NAME}",restrictKubeConfigAccess: false,serverUrl: env.kubernetes_endpoint
+                                ) {
+                                def maxRetries = 5
+                                def retryInterval = 30 // seconds
+                                def deploymentHealthy = false
+
+                                for (int i = 0; i < maxRetries; i++) {
+                                    try {
+                                        // Run health check inside cluster using ephemeral pod
+                                        def response = sh(
+                                            script: """
+                                            kubectl run tmp-shell --rm -i --tty --image=curlimages/curl --namespace ${env.BRANCH_NAME} -- /bin/sh -c "curl -o /dev/null -s -w '%{http_code}\\n' http://${env.service_name}.${env.BRANCH_NAME}.svc.cluster.local:${env.service_port}"
+                                            """,
+                                            returnStdout: true
+                                        ).trim()
+
+                                        if (response == '200') {
+                                            echo "✅ Application health check passed inside cluster."
+                                            deploymentHealthy = true
+                                            break
+                                        } else {
+                                            echo "⚠️ Application health check failed with status ${response}. Retrying in ${retryInterval} seconds..."
+                                        }
+                                    } catch (err) {
+                                        echo "⚠️ Health check command error: ${err.getMessage()}. Retrying in ${retryInterval} seconds..."
+                                    }
+                                    sleep retryInterval
+                                }
+
+                                if (!deploymentHealthy) {
+                                    echo "🔴 Automated health checks failed after multiple retries. Initiating rollback..."
+                                    try {
+                                        sh "kubectl rollout undo deployment/${env.service_name} -n ${env.BRANCH_NAME}"
+                                        echo "✅ Rollback command completed."
+                                    } catch (err) {
+                                        echo "❌ Rollback command failed: ${err.getMessage()}"
+                                    }
+                                    currentBuild.result = 'FAILURE'
+                                    error("🔴 Production deployment unhealthy. Automated rollback executed. Pipeline failed.")
+                                } else {
+                                    echo "✅ Automated post-deployment verification passed."
+                                }
                             }
                         }
                     }
@@ -574,17 +609,10 @@ pipeline {
                         performChaosTestingAfterDeploy(env.DETECTED_LANG)
                     }
                 }
-                stage("every test is fine "){
+                stage("is above tests and monitoring is fine for production environment"){
                     steps{
                         script{
                             input message: "Is prodiction environment is stable?", ok: "Deploy Now", submitter: "manager,admin"
-                        }
-                    }
-                }
-                stage("Verify the monitoring in prod"){
-                    steps{
-                        script{
-                            input message: "is montitoring is ok for production environment?", ok: "Deploy Now", submitter: "manager,admin"
                         }
                     }
                 }
@@ -592,45 +620,6 @@ pipeline {
                      
                     steps {
                         generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
-                    }
-                }
-                stage("Manual Verification of Production Deployment") {
-                    steps {
-                        script {
-                            env.ROLLBACK_DECISION = input(
-                                id: 'prodVerification',
-                                message: "Is production working correctly?",
-                                parameters: [
-                                    choice(name: 'Decision', choices: ['Proceed', 'Rollback'], description: 'Select rollback if prod is broken')
-                                ]
-                            )
-                            if (env.ROLLBACK_DECISION == 'Rollback') {
-                                echo "⏪ Manual decision: Rolling back to previous version..."
-                                try {
-                                    withKubeConfig(
-                                        caCertificate: env.kubernetesCaCertificate, // Now dynamic
-                                        clusterName: env.kubernetesClusterName,     // Now dynamic
-                                        contextName: '',
-                                        credentialsId: env.kubernetesCredentialsId, // Now dynamic
-                                        namespace: "${env.BRANCH_NAME}",
-                                        restrictKubeConfigAccess: false,
-                                        serverUrl: env.kubernetes_endpoint
-                                    ) {
-                                        sh "kubectl rollout undo deployment/${env.service_name} -n ${env.BRANCH_NAME}"
-                                        sh "kubectl rollout status deployment/${env.service_name} -n ${env.BRANCH_NAME}"
-                                        echo "✅ Rollback completed"
-                                    }
-                                } catch (err) {
-                                    echo "❌ Rollback command failed: ${err.getMessage()}"
-                                }
-
-                                // Mark build as failed after rollback
-                                currentBuild.result = 'FAILURE'
-                                error("🔴 Production was marked as broken. Rollback executed. Pipeline failed.")
-                            } else {
-                                echo "✅ Manual verification passed. Continuing with success flow..."
-                            }
-                        }
                     }
                 }
                 stage("prod deployment is successful"){
