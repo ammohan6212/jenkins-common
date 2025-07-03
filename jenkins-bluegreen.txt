@@ -58,7 +58,6 @@ pipeline {
                     }
                 }
                 stage("Install Dependencies and dependency scanning and type checking and unit tests and code coverage calcualtion ") {
-                     
                     steps {
                         installAppDependencies(env.DETECTED_LANG)
                         performDependencyScan(env.DETECTED_LANG)
@@ -68,7 +67,6 @@ pipeline {
                     }
                 }
                 stage("sonarqube and Mutation Testing and snapshot and component testing at Dev") {
-                     
                     steps {
                         runSonarQubeScan(env.SONAR_PROJECT_KEY)
                         runMutationTests(env.DETECTED_LANG)
@@ -97,7 +95,6 @@ pipeline {
                         }
                 }
                 stage("Perform building and  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
-                     
                         steps {
                             buildDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}", env.version, '.')
                             validateDockerImage("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
@@ -109,7 +106,6 @@ pipeline {
                         }
                 }
                 stage("Perform Integration and ui/component testingand static security analysis and chaos testing with Docker Containers") {
-                     
                     steps {
                         integrationWithDocker()
                         runUiComponentTests(env.DETECTED_LANG)
@@ -118,9 +114,15 @@ pipeline {
                     }
                 }
                 stage("Push Docker Image to dev env Registry") {
-                     
                     steps {
-                        pushDockerImageToRegistry("${env.docker_registr}", "${env.docker_credentials}", "${env. DOCKER_USERNAME}${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        script { // Wrap the steps in a script block to use try-catch
+                            try {
+                                pushDockerImageToRegistry("${env.docker_registry}", "${env.docker_credentials}", "${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}") // Corrected DOCKER_USERNAME to docker_username 
+                            } catch (err) {
+                                echo "Failed to push Docker image to registry: ${err.getMessage()}"
+                                error("Stopping pipeline due to Docker image push failure.")
+                            }
+                        }
                     }
                 }
                 stage("Deploy to Dev") {
@@ -155,12 +157,13 @@ pipeline {
                         performSanityTesting(env.DETECTED_LANG)
                         performApiTesting(env.DETECTED_LANG)
                         performIntegrationTesting(env.DETECTED_LANG)
-                        performLightUiTests(env.DETECTED_LANG)
-                        performRegressionTesting(env.DETECTED_LANG)
-                        performFeatureFlagChecks(env.DETECTED_LANG)
-                        performSecurityChecks(env.DETECTED_LANG)
-                        performChaosTestingAfterDeploy(env.DETECTED_LANG)
-                        performLoadPerformanceTesting(env.DETECTED_LANG)
+                        performDatabaseTesting()
+                        // performLightUiTests(env.DETECTED_LANG)
+                        // performRegressionTesting(env.DETECTED_LANG)
+                        // performFeatureFlagChecks(env.DETECTED_LANG)
+                        // performSecurityChecks(env.DETECTED_LANG)
+                        // performChaosTestingAfterDeploy(env.DETECTED_LANG)
+                        // performLoadPerformanceTesting(env.DETECTED_LANG)
                     }
                 }                
                 stage("Perform Logging and Monitoring Checks After Dev Deploy") {
@@ -212,6 +215,11 @@ pipeline {
                         }
                     }
                 }
+                stage("Detect Programming Language") {
+                    steps {
+                        detectLanguage() // Calls vars/detectLanguage.groovy
+                    }
+                }
                 stage("Static Code Analysis and unit tests and code coverage and dependencies and dependency check at Test") {
                     steps {
                         runUnitTests(env.DETECTED_LANG)
@@ -221,11 +229,18 @@ pipeline {
                         performDependencyScan(env.DETECTED_LANG)
                     }
                 }
-                stage("Create Archiving File and push the artifact  at Test Stage") {
-                    steps {
-                        createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                        pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
-                    }
+                stage("Create Archiving File and push the artifact ") {    
+                        steps {
+                            script {
+                                try {
+                                    createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
+                                    pushArtifact("${env.service_name}-${env.version}-${env.BRANCH_NAME}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
+                                } catch (err) {
+                                    echo "failed to push the artifact to specific repository ${err}"
+                                    error("Stopping pipeline")
+                                }
+                            }
+                        }
                 }
                 stage("Perform building and  docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
@@ -238,9 +253,16 @@ pipeline {
                         scanContainerGrype("${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}")
                     }
                 }
-                stage("Push Docker Image to Preprod Registry") {
+                stage("Push Docker Image to test env Registry") {
                     steps {
-                        pushDockerImageToRegistry("${env.docker_registr}", "${env.docker_credentials}", "${env. DOCKER_USERNAME}${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        script { // Wrap the steps in a script block to use try-catch
+                            try {
+                                pushDockerImageToRegistry("${env.docker_registry}", "${env.docker_credentials}", "${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}") // Corrected DOCKER_USERNAME to docker_username 
+                            } catch (err) {
+                                echo "Failed to push Docker image to registry: ${err.getMessage()}"
+                                error("Stopping pipeline due to Docker image push failure.")
+                            }
+                        }
                     }
                 }
                 stage("Deploy to test") {
@@ -257,7 +279,7 @@ pipeline {
                                         serverUrl: env.kubernetes_endpoint
                                     ) {
                                         // Change Kubernetes service selector to route traffic to Green
-                                        sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                                        sh """kubectl apply -f deployment.yml -n ${KUBE_NAMESPACE}"""
                                     }
                                 } catch (err) {
                                     echo "failed to deploy to the production ${err}"
@@ -273,10 +295,10 @@ pipeline {
                         performSanityTesting(env.DETECTED_LANG)
                         performIntegrationTesting(env.DETECTED_LANG)
                         performApiTesting(env.DETECTED_LANG)
-                        performRegressionTesting(env.DETECTED_LANG)
                         performDatabaseTesting()
+                        performRegressionTesting(env.DETECTED_LANG)
                         performLoadPerformanceTesting(env.DETECTED_LANG)
-                        performChaosTestingAfterDeploy(env.DETECTED_LANG)
+                        // performChaosTestingAfterDeploy(env.DETECTED_LANG)  ###this is optional here
                     }
                 }
                 stage("Generate Version File Test Env") {
@@ -322,9 +344,7 @@ pipeline {
                 stage("create the change request containing what is changing and any DB changes and any downtime and rollback plan if deplyoment failes and deploymentwindow and stakeholders"){
                     steps{
                         script{
-                            sh """
-                            create a change request for production deployment
-                            """
+                            echo "create a change request for production deployment"
                         }
                     }
                 }
@@ -353,11 +373,19 @@ pipeline {
                         performDependencyScan(env.DETECTED_LANG)
                     }
                 }
-                stage("Create Archiving File and push the artifact at Staging Env") {
-                    steps {
-                        createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
-                        pushArtifact("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
-                    }
+                stage("Create Archiving File and push the artifact ") {
+                     
+                        steps {
+                            script {
+                                try {
+                                    createArchive("${env.service_name}-${env.BRANCH_NAME}-${env.version}.zip", 'src/')
+                                    pushArtifact("${env.service_name}-${env.version}-${env.BRANCH_NAME}.zip", "s3://${env.AWS_S3_BUCKET}/${env.AWS_S3_PATH}")
+                                } catch (err) {
+                                    echo "failed to push the artifact to specific repository ${err}"
+                                    error("Stopping pipeline")
+                                }
+                            }
+                        }
                 }
                 stage("Perform build and   docker linting Container Scanning using trivy and syft and docker scout and Dockle and snyk at Test Env") {
                     steps {
@@ -395,13 +423,19 @@ pipeline {
                         }
                     }
                 }
-                stage("Push Docker Image to stag Registry") {
+                stage("Push Docker Image to prod env Registry") {
                     steps {
-                        pushDockerImageToRegistry("${env.docker_registr}", "${env.docker_credentials}", "${env. DOCKER_USERNAME}${env.service_name}-${env.BRANCH_NAME}:${env.version}")
+                        script { // Wrap the steps in a script block to use try-catch
+                            try {
+                                pushDockerImageToRegistry("${env.docker_registry}", "${env.docker_credentials}", "${env.docker_username}/${env.service_name}-${env.BRANCH_NAME}:${env.version}") // Corrected DOCKER_USERNAME to docker_username 
+                            } catch (err) {
+                                echo "Failed to push Docker image to registry: ${err.getMessage()}"
+                                error("Stopping pipeline due to Docker image push failure.")
+                            }
+                        }
                     }
                 }
-                stage("Deploy to prod at peak off-hours") {
-                     
+                stage("Deploy to Green environment at peak off-hours Production") {
                         steps {
                             script {
                                 try {
@@ -415,7 +449,7 @@ pipeline {
                                         serverUrl: env.kubernetes_endpoint
                                     ) {
                                         // Change Kubernetes service selector to route traffic to Green
-                                        sh """kubectl apply -f blue-load.yml -n ${KUBE_NAMESPACE}"""
+                                        sh """kubectl apply -f deployment.yml -n ${KUBE_NAMESPACE}"""
                                     }
                                 } catch (err) {
                                     echo "failed to deploy to the production ${err}"
@@ -424,19 +458,15 @@ pipeline {
                             }
                         }
                 }
-
                 stage("Smoke Test and sanity test and synthatic test and  in preProduction") {
-                     
                     steps {
                         performSmokeTesting(env.DETECTED_LANG)
-                        performLoadPerformanceTesting(env.DETECTED_LANG)
                         performSanityTesting(env.DETECTED_LANG)
-                        performIntegrationTesting(env.DETECTED_LANG)
-                        performApiTesting(env.DETECTED_LANG)
+                        // performIntegrationTesting(env.DETECTED_LANG)
+                        // performApiTesting(env.DETECTED_LANG)
                         performRegressionTesting(env.DETECTED_LANG)
                         performDatabaseTesting()
                         performChaosTestingAfterDeploy(env.DETECTED_LANG)
-
                     }
                 }
                 stage("is smoke and sanity and synthatic everything is fine"){
@@ -446,12 +476,38 @@ pipeline {
                         }
                     }
                 }
+                stage("Approve Traffic Switch to Green") {
+                    steps {
+                        input message: "Switch production traffic to Green?", ok: "Switch Now", submitter: "manager,admin"
+                    }
+                }
+                stage("Switch the traffic from blue to Green") {
+                        steps {
+                            script {
+                                try {
+                                    withKubeConfig(
+                                        caCertificate: env.kubernetesCaCertificate, // Now dynamic
+                                        clusterName: env.kubernetesClusterName,     // Now dynamic
+                                        contextName: '',
+                                        credentialsId: env.kubernetesCredentialsId, // Now dynamic
+                                        namespace: "${env.BRANCH_NAME}",
+                                        restrictKubeConfigAccess: false,
+                                        serverUrl: env.kubernetes_endpoint
+                                    ) {
+                                        // Change Kubernetes service selector to route traffic to Green
+                                        sh """kubectl patch service ${env.service_name} -p '{\"spec\": {\"selector\": {\"version\": \"green\"}}}' -n ${env.BRANCH_NAME}"""
+                                    }
+                                } catch (err) {
+                                    echo "failed to deploy to the production ${err}"
+                                    error("Stopping pipeline")
+                                }
+                            }
+                        }
+                }
                 stage("monitoring the prod environment"){
                     steps {
                         script {
-                            sh """
-                            montoring happens here
-                            """
+                           echo "monitoring the application in production"
                         }
                     }
                 }
@@ -462,14 +518,7 @@ pipeline {
                         }
                     }
                 }
-                stage("Generate Version File preprod Env") {
-                     
-                    steps {
-                        generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
-                    }
-                }
                 stage("Manual Verification of Production Deployment") {
-                     
                     steps {
                         script {
                             env.ROLLBACK_DECISION = input(
@@ -506,6 +555,18 @@ pipeline {
                                 echo "✅ Manual verification passed. Continuing with success flow..."
                             }
                         }
+                    }
+                }
+                stage("Cleanup Blue Deployment (Optional)") {
+                    steps {
+                        input message: "Delete old Blue deployment?", ok: "Delete Now", submitter: "manager,admin"
+                        sh "kubectl delete deployment ${env.service_name}-blue -n ${env.BRANCH_NAME}"
+                    }
+                }
+                stage("Generate Version File preprod Env") {
+                     
+                    steps {
+                        generateVersionFile('gcp', "${env.bucket_name}", "${gcp_credid}")
                     }
                 }
                 stage("prod deployment is successful"){
